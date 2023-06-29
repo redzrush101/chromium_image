@@ -3,7 +3,7 @@ name: Build Android ROM
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   build:
