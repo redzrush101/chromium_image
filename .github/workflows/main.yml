@@ -32,7 +32,7 @@ jobs:
       run: |
         mkdir ${SOURCE_REPO}
         cd ${SOURCE_REPO}
-        repo init -u https://chromium.googlesource.com/chromiumos/manifest.git
+        repo init --depth=1 -u https://chromium.googlesource.com/chromiumos/manifest.git
         repo sync
 
     - name: Build Chromium OS
