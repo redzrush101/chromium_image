@@ -1,23 +1,21 @@
-name: Build Chromium OS
+name: Build Android ROM
 
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-20.04
-
     steps:
     - name: Maximize build disk space
       uses: easimon/maximize-build-space@v7
       with:
-         # Absolute file path for the LVM image created on the temp filesystem, the default is usually fine. Must reside on /mnt
     # Removes .NET runtime and libraries. (frees ~17 GB)
         remove-dotnet: true # optional, default is false
     # Removes Android SDKs and Tools. (frees ~11 GB)
-        remove-android: true # optional, default is false
+        remove-android: false # optional, default is false
     # Removes GHC (Haskell) artifacts. (frees ~2.7 GB)
         remove-haskell: true # optional, default is false
     # Removes CodeQL Action Bundles. (frees ~5.4 GB)
@@ -25,77 +23,54 @@ jobs:
     # Removes cached Docker images. (frees ~3 GB)
         remove-docker-images: true
 
-    - name: Checkout code
+    steps:
+    - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Install dependencies
+    - name: Set up environment
       run: |
         sudo sed -i 's/azure\.//' /etc/apt/sources.list
-        sudo apt-get update
-        sudo apt-get install -y git 
-        sudo apt-get install -y subversion curl lvm2 thin-provisioning-tools python-pkg-resources python3-virtualenv python3-oauth2client
+        sudo apt update 
+        curl https://raw.githubusercontent.com/snjy4/TWRP_BUILD/main/cleanup.sh | bash
+        sudo apt install -y build-essential ccache libncurses5 libssl-dev m4 unzip zip brotli bc bison curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev adb fastboot python python3.8 abootimg
+        mkdir ~/bin && PATH=~/bin:$PATH
+        curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+        chmod a+x ~/bin/repo
+        git config --global user.name "redzrush101"
+        git config --global user.email "yassinrezai71@gmail.com"
+
+    - name: Initialize repo
+      run: |
+        mkdir lineage && cd lineage
+        repo init --depth=1 -u https://github.com/LineageOS/android.git -b lineage-20.0
+        git clone https://github.com/redzrush101/local_manfiest.git --depth 1 -b master .repo/local_manifests
+        repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync -j4
+
+    - name: Cherry pick commit
+      run: |
+        cd build/soong 
+        git fetch https://github.com/verNANDo57/android_build_soong patch-p1 
+        git cherry-pick ffc8846a01fcfc20d6cf8ca701ef73d99f15acad
+        cd ../..
         df -h
-    - name: Install depot_tools
+
+
+    - name: Build ROM
       run: |
-        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-        echo "depot_tools=$PWD/depot_tools" >> $GITHUB_ENV
-        echo "$PWD/depot_tools" >> $GITHUB_PATH
+        source build/envsetup.sh
+        lunch lineage_sweet-userdebug
+        mka api-stubs-docs
+        mka hiddenapi-lists-docs
+        mka system-api-stubs-docs 
+        mka test-api-stubs-docs
+        mka bacon -j3
 
-    - name: Get Chromium OS source
-      env:
-         SOURCE_REPO: chromium  
-      run: |
-        mkdir ${SOURCE_REPO}
-        cd ${SOURCE_REPO}
-        repo init --depth=1 -u https://chromium.googlesource.com/chromiumos/manifest.git
-        repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync 
-
-    - name: Build Chromium OS
-      run: |
-        export BOARD=amd64-generic
-        cd ${SOURCE_REPO}
-        cros build-packages --board=${BOARD}
-        cros build-image --board=${BOARD}
-
-    - name: Upload Chromium OS image
-      uses: actions/upload-artifact@v2
-      with:
-        name: chromiumos-image
-        path: ${SOURCE_REPO}/build/images/${BOARD}/latest/chromiumos_image.bin
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Download Chromium OS image
-      uses: actions/download-artifact@v2
-      with:
-        name: chromiumos-image
-
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-
-    - name: Upload Release Asset
-      id: upload-release-asset 
+    - name: Upload ROM to GitHub Releases
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./chromiumos_image.bin
-        asset_name: chromiumos_image.bin
-        asset_content_type: application/octet-stream
-
-
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./out/target/product/sweet/lineage-*.zip
+        asset_name: lineage-*.zip
+        asset_content_type: application/zip
