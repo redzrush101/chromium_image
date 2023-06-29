@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-20.04
 
     steps:
     - name: Checkout code
@@ -16,7 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y git-core gitk git-gui subversion curl lvm2 thin-provisioning-tools python-pkg-resources python-virtualenv python-oauth2client
+        sudo apt-get install -y git gitk git-gui subversion curl lvm2 thin-provisioning-tools python3-pkg-resources python-virtualenv python-oauth2client
 
     - name: Install depot_tools
       run: |
