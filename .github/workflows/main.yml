@@ -1,4 +1,4 @@
-Build Chromium OS
+name: Build Chromium OS
 
 on:
   push:
