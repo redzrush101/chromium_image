@@ -27,6 +27,8 @@ jobs:
         echo "$PWD/depot_tools" >> $GITHUB_PATH
 
     - name: Get Chromium OS source
+      env:
+         SOURCE_REPO: chromium  
       run: |
         mkdir ${SOURCE_REPO}
         cd ${SOURCE_REPO}
