@@ -15,6 +15,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo sed -i 's/azure\.//' /etc/apt/sources.list
         sudo apt-get update
         sudo apt-get install -y git gitk git-gui subversion curl lvm2 thin-provisioning-tools python3-pkg-resources python-virtualenv python-oauth2client
 
