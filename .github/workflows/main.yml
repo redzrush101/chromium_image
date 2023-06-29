@@ -10,6 +10,21 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
+    - name: Maximize build disk space
+      uses: easimon/maximize-build-space@v7
+      with:
+         # Absolute file path for the LVM image created on the temp filesystem, the default is usually fine. Must reside on /mnt
+    # Removes .NET runtime and libraries. (frees ~17 GB)
+        remove-dotnet: true # optional, default is false
+    # Removes Android SDKs and Tools. (frees ~11 GB)
+        remove-android: true # optional, default is false
+    # Removes GHC (Haskell) artifacts. (frees ~2.7 GB)
+        remove-haskell: true # optional, default is false
+    # Removes CodeQL Action Bundles. (frees ~5.4 GB)
+        remove-codeql: true # optional, default is false
+    # Removes cached Docker images. (frees ~3 GB)
+        remove-docker-images: true
+
     - name: Checkout code
       uses: actions/checkout@v2
 
@@ -19,7 +34,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y git 
         sudo apt-get install -y subversion curl lvm2 thin-provisioning-tools python-pkg-resources python3-virtualenv python3-oauth2client
-
+        df -h
     - name: Install depot_tools
       run: |
         git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
